@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upper Room - Live Stream & Prayer</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body { background-color: #0d0f12; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+    .glass { background: rgba(23, 27, 34, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glass-card { background: rgba(30, 35, 45, 0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); }
+    .gold-gradient { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .gold-text { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden pb-16 md:pb-0">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="glass h-16 px-4 md:px-6 flex items-center justify-between z-50 shrink-0">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('rooms')">
+      <div class="w-9 h-9 rounded-xl gold-gradient flex items-center justify-center font-bold text-black text-xl shadow-lg shadow-amber-500/20">
+        ✝
+      </div>
+      <span class="text-lg md:text-xl font-bold tracking-tight text-white">UPPER <span class="gold-text">ROOM</span></span>
+    </div>
+
+    <!-- Auth / User Info -->
+    <div class="flex items-center space-x-4">
+      <div id="userInfo" class="hidden flex items-center space-x-3">
+        <span id="userDisplayName" class="text-xs md:text-sm font-medium text-gray-300"></span>
+        <button onclick="handleSignOut()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 transition">
+          Sign Out
+        </button>
+      </div>
+      <div id="authButtons" class="flex space-x-2">
+        <button onclick="openAuthModal('login')" class="text-xs md:text-sm text-gray-300 hover:text-white px-3 py-1.5">Sign In</button>
+        <button onclick="openAuthModal('signup')" class="text-xs md:text-sm gold-gradient text-black font-semibold px-4 py-1.5 rounded-lg shadow-md hover:opacity-90 transition">
+          Get Started
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN APP WRAPPER -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- DESKTOP SIDEBAR NAVIGATION -->
+    <aside class="w-64 glass flex flex-col justify-between p-4 shrink-0 hidden md:flex">
+      <nav class="space-y-2">
+        <button onclick="switchTab('rooms')" id="nav-rooms" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <i data-lucide="radio" class="w-5 h-5"></i>
+          <span>Live Rooms</span>
+        </button>
+        <button onclick="switchTab('prayers')" id="nav-prayers" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium text-gray-400 hover:bg-gray-800/50 hover:text-gray-200 transition">
+          <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+          <span>Prayer Wall</span>
+        </button>
+      </nav>
+
+      <!-- Broadcast Action Button -->
+      <button onclick="openCreateRoomModal()" class="w-full gold-gradient text-black font-bold py-3 px-4 rounded-xl shadow-lg shadow-amber-500/10 flex items-center justify-center space-x-2 hover:opacity-95 transition">
+        <i data-lucide="video" class="w-5 h-5"></i>
+        <span>Go Live</span>
+      </button>
+    </aside>
+
+    <!-- CONTENT VIEWS -->
+    <main class="flex-1 flex flex-col overflow-y-auto no-scrollbar relative bg-slate-950/40">
+
+      <!-- VIEW 1: LIVE ROOMS DISCOVERY -->
+      <section id="view-rooms" class="p-4 md:p-6 space-y-6 max-w-7xl mx-auto w-full">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-xl md:text-2xl font-bold text-white">Active Streams</h1>
+            <p class="text-xs md:text-sm text-gray-400">Join a live room, listen, pray, and fellowship.</p>
+          </div>
+          <!-- Join via Code -->
+          <div class="flex space-x-2">
+            <input type="text" id="joinCodeInput" placeholder="6-DIGIT CODE" maxlength="6" class="bg-gray-900 border border-gray-700 text-white text-xs md:text-sm rounded-xl px-3 py-2 w-36 md:w-44 focus:outline-none focus:border-amber-500 uppercase tracking-widest text-center">
+            <button onclick="joinRoomByCode()" class="bg-gray-800 hover:bg-gray-700 text-amber-400 border border-amber-500/30 px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition">
+              Join
+            </button>
+          </div>
+        </div>
+
+        <!-- Room Grid -->
+        <div id="roomsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- VIEW 2: PRAYER REQUESTS -->
+      <section id="view-prayers" class="p-4 md:p-6 space-y-6 max-w-4xl mx-auto w-full hidden">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-xl md:text-2xl font-bold text-white">Prayer Requests</h1>
+            <p class="text-xs md:text-sm text-gray-400">Share your burdens and agree in prayer with others.</p>
+          </div>
+          <button onclick="openPrayerModal()" class="gold-gradient text-black font-semibold text-xs md:text-sm px-4 py-2 rounded-xl shadow transition">
+            Post Request
+          </button>
+        </div>
+
+        <div id="prayersList" class="space-y-4">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- VIEW 3: ACTIVE LIVE STREAM ROOM -->
+      <section id="view-active-room" class="flex-1 flex flex-col lg:flex-row h-full hidden overflow-hidden">
+        
+        <div class="flex-1 bg-black relative flex flex-col justify-center items-center overflow-hidden min-h-[250px] md:min-h-[300px]">
+          <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+          <video id="localVideo" autoplay playsinline muted class="absolute top-4 right-4 w-28 h-36 md:w-36 md:h-48 object-cover rounded-xl border border-amber-500/40 shadow-2xl hidden"></video>
+
+          <div class="absolute top-4 left-4 flex items-center space-x-3 glass px-3 py-1.5 rounded-full">
+            <span class="flex h-2.5 w-2.5 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span id="activeRoomTitle" class="text-xs font-semibold text-white">Live Stream</span>
+            <span class="text-gray-500">|</span>
+            <div class="flex items-center space-x-1 text-xs text-gray-300">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              <span id="activeViewerCount">0</span>
+            </div>
+          </div>
+
+          <div class="absolute top-4 right-4 flex items-center space-x-2">
+            <button onclick="leaveActiveRoom()" class="bg-red-600/80 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg backdrop-blur transition">
+              Leave
+            </button>
+          </div>
+
+          <div class="absolute bottom-4 left-4 glass px-3 py-1 rounded-lg text-xs font-mono text-amber-400">
+            CODE: <span id="activeRoomCodeDisplay">------</span>
+          </div>
+        </div>
+
+        <div class="w-full lg:w-80 h-64 lg:h-full glass flex flex-col shrink-0 border-t lg:border-t-0 lg:border-l border-gray-800">
+          <div class="p-3 border-b border-gray-800/60 font-semibold text-xs text-gray-400 uppercase tracking-wider flex justify-between items-center">
+            <span>Live Chat</span>
+            <button id="followBtn" onclick="toggleFollowHost()" class="text-amber-400 hover:text-amber-300 text-xs font-semibold">
+              + Follow
+            </button>
+          </div>
+
+          <div id="chatContainer" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm"></div>
+
+          <form onsubmit="handleSendChatMessage(event)" class="p-3 border-t border-gray-800/80 flex space-x-2 bg-gray-950/40">
+            <input type="text" id="chatInput" placeholder="Send a message..." class="flex-1 bg-gray-900 border border-gray-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+            <button type="submit" class="gold-gradient text-black px-3 py-2 rounded-xl text-xs font-bold hover:opacity-90">
+              Send
+            </button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
+  <div class="fixed bottom-0 left-0 right-0 glass h-16 flex items-center justify-around px-4 md:hidden z-50">
+    <button onclick="switchTab('rooms')" class="flex flex-col items-center text-amber-400 space-y-1">
+      <i data-lucide="radio" class="w-5 h-5"></i>
+      <span class="text-[10px]">Rooms</span>
+    </button>
+    <button onclick="openCreateRoomModal()" class="gold-gradient text-black p-3 rounded-full shadow-lg -mt-5">
+      <i data-lucide="video" class="w-6 h-6"></i>
+    </button>
+    <button onclick="switchTab('prayers')" class="flex flex-col items-center text-gray-400 space-y-1">
+      <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+      <span class="text-[10px]">Prayers</span>
+    </button>
+  </div>
+
+  <!-- MODALS -->
+
+  <!-- Auth Modal -->
+  <div id="modalAuth" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      <h2 id="authModalTitle" class="text-xl font-bold text-white">Sign In</h2>
+      <form onsubmit="handleAuthSubmit(event)" class="space-y-3">
+        <div id="nameField" class="hidden">
+          <label class="text-xs text-gray-400 block mb-1">Display Name</label>
+          <input type="text" id="authName" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Email</label>
+          <input type="email" id="authEmail" required class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Password</label>
+          <input type="password" id="authPassword" required class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <p id="authError" class="text-xs text-red-400 hidden"></p>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="closeAuthModal()" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancel</button>
+          <button type="submit" id="authSubmitBtn" class="gold-gradient text-black font-bold text-xs px-5 py-2 rounded-xl shadow">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Room Modal -->
+  <div id="modalCreateRoom" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      <h2 class="text-xl font-bold text-white">Start a Broadcast</h2>
+      <form onsubmit="handleCreateRoomSubmit(event)" class="space-y-3">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Room Title</label>
+          <input type="text" id="roomTitleInput" required placeholder="Evening Fellowship & Prayer" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="closeCreateRoomModal()" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancel</button>
+          <button type="submit" class="gold-gradient text-black font-bold text-xs px-5 py-2 rounded-xl shadow">Go Live</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Prayer Request Modal -->
+  <div id="modalPrayer" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass border border-gray-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      <h2 class="text-xl font-bold text-white">Submit Prayer Request</h2>
+      <form onsubmit="handlePrayerSubmit(event)" class="space-y-3">
+        <div>
+          <textarea id="prayerTextInput" required rows="4" placeholder="Share your request..." class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500"></textarea>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="closePrayerModal()" class="px-4 py-2 text-xs text-gray-400 hover:text-white">Cancel</button>
+          <button type="submit" class="gold-gradient text-black font-bold text-xs px-5 py-2 rounded-xl shadow">Post Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FIREBASE APPLICATION LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+      signOut, onAuthStateChanged, updateProfile 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+      getFirestore, collection, doc, setDoc, getDoc, addDoc, 
+      deleteDoc, onSnapshot, query, serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAv_1-44cLJ_AZyBRO-FAlb0we67diWj8U",
+      authDomain: "upper-room-cce1c.firebaseapp.com",
+      projectId: "upper-room-cce1c",
+      storageBucket: "upper-room-cce1c.firebasestorage.app",
+      messagingSenderId: "567331674713",
+      appId: "1:567331674713:web:f7364a070bb0d07e56ef48",
+      measurementId: "G-TCHS3GVVB3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+    let authMode = 'login';
+    let activeRoomId = null;
+    let activeHostId = null;
+    let isHost = false;
+    let localStream = null;
+
+    const peerConnections = {};
+    let viewerPeerConnection = null;
+
+    const rtcConfig = {
+      iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }]
+    };
+
+    let roomsUnsub = null;
+    let chatUnsub = null;
+    let answersUnsub = null;
+    let candidatesUnsub = null;
+    let isFollowing = false;
+
+    lucide.createIcons();
+
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      const userInfoEl = document.getElementById('userInfo');
+      const authButtonsEl = document.getElementById('authButtons');
+
+      if (user) {
+        userInfoEl.classList.remove('hidden');
+        authButtonsEl.classList.add('hidden');
+        document.getElementById('userDisplayName').innerText = user.displayName || user.email.split('@')[0];
+        
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email.split('@')[0],
+          lastActive: serverTimestamp()
+        }, { merge: true });
+
+      } else {
+        userInfoEl.classList.add('hidden');
+        authButtonsEl.classList.remove('hidden');
+      }
+    });
+
+    window.switchTab = function(tabName) {
+      document.getElementById('view-rooms').classList.add('hidden');
+      document.getElementById('view-prayers').classList.add('hidden');
+      document.getElementById('view-active-room').classList.add('hidden');
+
+      if (tabName === 'rooms') {
+        document.getElementById('view-rooms').classList.remove('hidden');
+        listenToRooms();
+      } else if (tabName === 'prayers') {
+        document.getElementById('view-prayers').classList.remove('hidden');
+        listenToPrayers();
+      }
+    }
+
+    window.openAuthModal = function(mode) {
+      authMode = mode;
+      document.getElementById('authModalTitle').innerText = mode === 'login' ? 'Sign In' : 'Create Account';
+      document.getElementById('nameField').style.display = mode === 'signup' ? 'block' : 'none';
+      document.getElementById('modalAuth').classList.remove('hidden');
+    }
+    window.closeAuthModal = function() {
+      document.getElementById('modalAuth').classList.add('hidden');
+      document.getElementById('authError').classList.add('hidden');
+    }
+
+    window.handleAuthSubmit = async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const name = document.getElementById('authName').value;
+      const errEl = document.getElementById('authError');
+      errEl.classList.add('hidden');
+
+      try {
+        if (authMode === 'signup') {
+          const res = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(res.user, { displayName: name });
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+        closeAuthModal();
+      } catch (err) {
+        errEl.innerText = err.message;
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    window.handleSignOut = function() {
+      signOut(auth);
+    }
+
+    function listenToRooms() {
+      if (roomsUnsub) roomsUnsub();
+      const grid = document.getElementById('roomsGrid');
+      const q = collection(db, 'rooms');
+      
+      roomsUnsub = onSnapshot(q, (snapshot) => {
+        grid.innerHTML = '';
+        if(snapshot.empty) {
+          grid.innerHTML = `<div class="col-span-full text-center py-12 text-gray-500">No active rooms. Be the first to go live!</div>`;
+          return;
+        }
+
+        snapshot.forEach((docSnap) => {
+          const room = docSnap.data();
+          const card = document.createElement('div');
+          card.className = "glass-card rounded-2xl p-5 hover:border-amber-500/40 transition cursor-pointer flex flex-col justify-between h-48";
+          card.onclick = () => joinRoom(docSnap.id);
+          
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="bg-red-500/10 text-red-400 text-xs px-2.5 py-1 rounded-full font-semibold border border-red-500/20">LIVE</span>
+                <span class="text-xs text-gray-400 font-mono">#${docSnap.id}</span>
+              </div>
+              <h3 class="font-bold text-lg text-white line-clamp-1">${room.title}</h3>
+              <p class="text-xs text-gray-400 mt-1">Host: ${room.hostName || 'Anonymous'}</p>
+            </div>
+            <div class="flex justify-between items-center text-xs text-gray-400 pt-3 border-t border-gray-800">
+              <div class="flex items-center space-x-1">
+                <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+                <span>Join Stream</span>
+              </div>
+              <span class="gold-text font-semibold">Watch →</span>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+        lucide.createIcons();
+      });
+    }
+
+    window.openCreateRoomModal = function() {
+      if(!currentUser) return openAuthModal('login');
+      document.getElementById('modalCreateRoom').classList.remove('hidden');
+    }
+    window.closeCreateRoomModal = function() {
+      document.getElementById('modalCreateRoom').classList.add('hidden');
+    }
+
+    window.handleCreateRoomSubmit = async function(e) {
+      e.preventDefault();
+      const title = document.getElementById('roomTitleInput').value;
+      closeCreateRoomModal();
+
+      const roomId = Math.floor(100000 + Math.random() * 900000).toString();
+      isHost = true;
+      activeRoomId = roomId;
+      activeHostId = currentUser.uid;
+
+      await setDoc(doc(db, "rooms", roomId), {
+        title: title,
+        hostId: currentUser.uid,
+        hostName: currentUser.displayName || currentUser.email.split('@')[0],
+        createdAt: serverTimestamp()
+      });
+
+      setupActiveRoomUI(title, roomId);
+      startHostWebRTC(roomId);
+    }
+
+    window.joinRoomByCode = function() {
+      const code = document.getElementById('joinCodeInput').value.trim();
+      if(code.length === 6) joinRoom(code);
+    }
+
+    async function joinRoom(roomId) {
+      if(!currentUser) return openAuthModal('login');
+      
+      const roomSnap = await getDoc(doc(db, "rooms", roomId));
+      if(!roomSnap.exists()) {
+        alert('Room not found');
+        return;
+      }
+
+      const roomData = roomSnap.data();
+      isHost = (roomData.hostId === currentUser.uid);
+      activeRoomId = roomId;
+      activeHostId = roomData.hostId;
+
+      setupActiveRoomUI(roomData.title, roomId);
+
+      if(isHost) {
+        startHostWebRTC(roomId);
+      } else {
+        startViewerWebRTC(roomId);
+      }
+    }
+
+    async function startHostWebRTC(roomId) {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const localVid = document.getElementById('localVideo');
+      localVid.srcObject = localStream;
+      localVid.classList.remove('hidden');
+
+      const offerDoc = doc(db, "rooms", roomId, "offer", "main");
+      const tempPc = new RTCPeerConnection(rtcConfig);
+      
+      localStream.getTracks().forEach(track => tempPc.addTrack(track, localStream));
+      const offer = await tempPc.createOffer();
+      await tempPc.setLocalDescription(offer);
+
+      await setDoc(offerDoc, {
+        sdp: offer.sdp,
+        type: offer.type,
+        hostId: currentUser.uid
+      });
+      tempPc.close();
+
+      answersUnsub = onSnapshot(collection(db, "rooms", roomId, "answers"), (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added') {
+            const answerData = change.doc.data();
+            const viewerUid = answerData.userId;
+
+            if (!peerConnections[viewerUid]) {
+              const pc = new RTCPeerConnection(rtcConfig);
+              peerConnections[viewerUid] = pc;
+
+              localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+              pc.onicecandidate = async (e) => {
+                if (e.candidate) {
+                  await addDoc(collection(db, "rooms", roomId, "candidates"), {
+                    candidate: e.candidate.toJSON(),
+                    userId: currentUser.uid,
+                    targetUserId: viewerUid
+                  });
+                }
+              };
+
+              await pc.setRemoteDescription(new RTCSessionDescription(answerData));
+            }
+          }
+        });
+      });
+
+      candidatesUnsub = onSnapshot(collection(db, "rooms", roomId, "candidates"), (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (data.userId !== currentUser.uid && data.targetUserId === currentUser.uid) {
+              const pc = peerConnections[data.userId];
+              if (pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+              }
+            }
+          }
+        });
+      });
+    }
+
+    async function startViewerWebRTC(roomId) {
+      viewerPeerConnection = new RTCPeerConnection(rtcConfig);
+
+      const remoteVid = document.getElementById('remoteVideo');
+      viewerPeerConnection.ontrack = (event) => {
+        remoteVid.srcObject = event.streams[0];
+      };
+
+      viewerPeerConnection.onicecandidate = async (e) => {
+        if (e.candidate) {
+          await addDoc(collection(db, "rooms", roomId, "candidates"), {
+            candidate: e.candidate.toJSON(),
+            userId: currentUser.uid,
+            targetUserId: activeHostId
+          });
+        }
+      };
+
+      const offerSnap = await getDoc(doc(db, "rooms", roomId, "offer", "main"));
+      if (offerSnap.exists()) {
+        const offer = offerSnap.data();
+        await viewerPeerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+        const answer = await viewerPeerConnection.createAnswer();
+        await viewerPeerConnection.setLocalDescription(answer);
+
+        await addDoc(collection(db, "rooms", roomId, "answers"), {
+          sdp: answer.sdp,
+          type: answer.type,
+          userId: currentUser.uid
+        });
+      }
+
+      candidatesUnsub = onSnapshot(collection(db, "rooms", roomId, "candidates"), (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (data.userId === activeHostId && data.targetUserId === currentUser.uid) {
+              await viewerPeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+          }
+        });
+      });
+    }
+
+    function setupActiveRoomUI(title, code) {
+      document.getElementById('view-rooms').classList.add('hidden');
+      document.getElementById('view-prayers').classList.add('hidden');
+      document.getElementById('view-active-room').classList.remove('hidden');
+
+      document.getElementById('activeRoomTitle').innerText = title;
+      document.getElementById('activeRoomCodeDisplay').innerText = code;
+
+      const followBtn = document.getElementById('followBtn');
+      if (isHost) {
+        followBtn.classList.add('hidden');
+      } else {
+        followBtn.classList.remove('hidden');
+        checkFollowStatus();
+      }
+
+      if (currentUser) {
+        setDoc(doc(db, "rooms", code, "viewers", currentUser.uid), {
+          displayName: currentUser.displayName || currentUser.email.split('@')[0],
+          joinedAt: serverTimestamp()
+        });
+      }
+
+      onSnapshot(collection(db, "rooms", code, "viewers"), (snap) => {
+        document.getElementById('activeViewerCount').innerText = snap.size;
+      });
+
+      const chatQuery = collection(db, "rooms", code, "messages");
+      const chatBox = document.getElementById('chatContainer');
+      chatUnsub = onSnapshot(chatQuery, (snapshot) => {
+        chatBox.innerHTML = '';
+        snapshot.forEach((docSnap) => {
+          const msg = docSnap.data();
+          const item = document.createElement('div');
+          item.className = "bg-gray-900/60 p-2 rounded-xl border border-gray-800/80";
+          item.innerHTML = `<span class="font-bold text-amber-400 text-xs">${msg.senderName}:</span> <span class="text-gray-200 text-xs">${msg.text}</span>`;
+          chatBox.appendChild(item);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    }
+
+    window.handleSendChatMessage = async function(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      if(!input.value.trim() || !activeRoomId || !currentUser) return;
+
+      await addDoc(collection(db, "rooms", activeRoomId, "messages"), {
+        text: input.value.trim(),
+        userId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.email.split('@')[0],
+        createdAt: serverTimestamp()
+      });
+
+      input.value = '';
+    }
+
+    async function checkFollowStatus() {
+      if(!currentUser || !activeHostId) return;
+      const followId = `${currentUser.uid}_${activeHostId}`;
+      const followSnap = await getDoc(doc(db, "follows", followId));
+      isFollowing = followSnap.exists();
+      updateFollowUI();
+    }
+
+    window.toggleFollowHost = async function() {
+      if(!currentUser || !activeHostId) return;
+      const followId = `${currentUser.uid}_${activeHostId}`;
+      const followRef = doc(db, "follows", followId);
+
+      if (isFollowing) {
+        await deleteDoc(followRef);
+        isFollowing = false;
+      } else {
+        await setDoc(followRef, {
+          followerId: currentUser.uid,
+          followedId: activeHostId,
+          createdAt: serverTimestamp()
+        });
+        isFollowing = true;
+      }
+      updateFollowUI();
+    }
+
+    function updateFollowUI() {
+      const followBtn = document.getElementById('followBtn');
+      followBtn.innerText = isFollowing ? "Following" : "+ Follow";
+      followBtn.className = isFollowing 
+        ? "text-gray-400 hover:text-gray-200 text-xs font-semibold" 
+        : "text-amber-400 hover:text-amber-300 text-xs font-semibold";
+    }
+
+    window.leaveActiveRoom = async function() {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      if (viewerPeerConnection) {
+        viewerPeerConnection.close();
+      }
+      Object.values(peerConnections).forEach(pc => pc.close());
+
+      if (currentUser && activeRoomId) {
+        await deleteDoc(doc(db, "rooms", activeRoomId, "viewers", currentUser.uid));
+        if (isHost) {
+          await deleteDoc(doc(db, "rooms", activeRoomId));
+        }
+      }
+
+      if (chatUnsub) chatUnsub();
+      if (answersUnsub) answersUnsub();
+      if (candidatesUnsub) candidatesUnsub();
+
+      document.getElementById('localVideo').classList.add('hidden');
+      document.getElementById('remoteVideo').srcObject = null;
+      switchTab('rooms');
+    }
+
+    function listenToPrayers() {
+      const container = document.getElementById('prayersList');
+      const q = collection(db, 'prayerRequests');
+
+      onSnapshot(q, (snapshot) => {
+        container.innerHTML = '';
+        if(snapshot.empty) {
+          container.innerHTML = `<div class="text-center py-12 text-gray-500">No active prayer requests.</div>`;
+          return;
+        }
+
+        snapshot.forEach((docSnap) => {
+          const req = docSnap.data();
+          const card = document.createElement('div');
+          card.className = "glass-card p-4 rounded-xl border border-gray-800 space-y-2";
+          card.innerHTML = `
+            <div class="flex justify-between items-center text-xs text-gray-400">
+              <span class="font-bold text-amber-400">${req.authorName || 'Anonymous'}</span>
+            </div>
+            <p class="text-sm text-gray-200">${req.text}</p>
+          `;
+          container.appendChild(card);
+        });
+      });
+    }
+
+    window.openPrayerModal = function() {
+      if(!currentUser) return openAuthModal('login');
+      document.getElementById('modalPrayer').classList.remove('hidden');
+    }
+    window.closePrayerModal = function() {
+      document.getElementById('modalPrayer').classList.add('hidden');
+    }
+
+    window.handlePrayerSubmit = async function(e) {
+      e.preventDefault();
+      const text = document.getElementById('prayerTextInput').value;
+      
+      await addDoc(collection(db, "prayerRequests"), {
+        text: text,
+        userId: currentUser.uid,
+        authorName: currentUser.displayName || currentUser.email.split('@')[0],
+        createdAt: serverTimestamp()
+      });
+
+      document.getElementById('prayerTextInput').value = '';
+      closePrayerModal();
+    }
+
+    switchTab('rooms');
+  </script>
+</body>
+</html>
+
